@@ -12,16 +12,10 @@ jobs:
 
     steps:
 
-      # =========================
-      # 1. 获取项目
-      # =========================
       - name: Checkout
         uses: actions/checkout@v4
 
 
-      # =========================
-      # 2. 安装编译工具
-      # =========================
       - name: Install build tools
         shell: bash
         run: |
@@ -29,23 +23,15 @@ jobs:
 
           brew update
 
-          brew install \
-            make \
-            dpkg \
-            ldid \
-            xz
+          brew install make dpkg ldid xz
 
-          echo "===== Tool versions ====="
-
+          echo "===== Tools ====="
           clang --version
           make --version
           ldid -V || true
           dpkg --version
 
 
-      # =========================
-      # 3. 安装 RootHide Theos
-      # =========================
       - name: Install RootHide Theos
         shell: bash
         run: |
@@ -53,30 +39,27 @@ jobs:
 
           export THEOS="$GITHUB_WORKSPACE/theos"
 
-          echo "THEOS=$THEOS"
-
           rm -rf "$THEOS"
 
           git clone --recursive \
             https://github.com/roothide/theos.git \
             "$THEOS"
 
-          echo "===== Theos installed ====="
+          echo "===== RootHide Theos installed ====="
 
           ls -lah "$THEOS"
 
-          echo "===== Theos path ====="
+          echo "===== Theos bin ====="
 
-          realpath "$THEOS"
+          ls -lah "$THEOS/bin" | head -40
 
-          test -f "$THEOS/Makefile"
+          echo "===== Theos SDK directory ====="
 
-          echo "Theos OK"
+          mkdir -p "$THEOS/sdks"
+
+          echo "Theos clone OK"
 
 
-      # =========================
-      # 4. 安装 iPhoneOS 16.5 SDK
-      # =========================
       - name: Install iPhoneOS SDK
         shell: bash
         run: |
@@ -86,7 +69,7 @@ jobs:
 
           mkdir -p "$THEOS/sdks"
 
-          rm -f /tmp/iPhoneOS16.5.sdk.tar.xz
+          echo "===== Download iPhoneOS 16.5 SDK ====="
 
           curl \
             --fail \
@@ -122,36 +105,32 @@ jobs:
           echo "iPhoneOS16.5 SDK OK"
 
 
-      # =========================
-      # 5. 检查 Theos
-      # =========================
-      - name: Check Theos
+      - name: Check Theos and SDK
         shell: bash
         run: |
           set -e
 
           export THEOS="$GITHUB_WORKSPACE/theos"
 
-          echo "THEOS=$THEOS"
-
-          test -f "$THEOS/Makefile"
-
-          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
+          echo "===== THEOS ====="
+          echo "$THEOS"
 
           echo "===== SDK ====="
+          ls -lah "$THEOS/sdks"
 
+          echo "===== iPhoneOS16.5.sdk ====="
           ls -lah "$THEOS/sdks/iPhoneOS16.5.sdk" | head -30
 
-          echo "===== Theos ====="
+          echo "===== Required Theos directories ====="
 
-          ls -lah "$THEOS/bin" | head -30
+          test -d "$THEOS/bin"
+          test -d "$THEOS/makefiles"
+          test -d "$THEOS/toolchain"
+          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
 
-          echo "Theos check OK"
+          echo "Theos + SDK OK"
 
 
-      # =========================
-      # 6. 检查源代码
-      # =========================
       - name: Check source files
         shell: bash
         run: |
@@ -177,9 +156,6 @@ jobs:
             -print
 
 
-      # =========================
-      # 7. 编译 RootHide deb
-      # =========================
       - name: Build RootHide deb
         shell: bash
         run: |
@@ -187,17 +163,11 @@ jobs:
 
           export THEOS="$GITHUB_WORKSPACE/theos"
 
-          echo "===== Build environment ====="
+          echo "===== Build ====="
 
           echo "THEOS=$THEOS"
 
-          echo "SDK=$THEOS/sdks/iPhoneOS16.5.sdk"
-
-          echo "===== Clean ====="
-
           make clean || true
-
-          echo "===== Build ====="
 
           make package \
             THEOS_PACKAGE_SCHEME=roothide \
@@ -206,9 +176,6 @@ jobs:
             SDKVERSION=16.5
 
 
-      # =========================
-      # 8. 检查 deb
-      # =========================
       - name: Check package
         shell: bash
         run: |
@@ -222,18 +189,15 @@ jobs:
 
           file packages/*.deb
 
-          echo "===== dpkg ====="
+          echo "===== package information ====="
 
           dpkg-deb -I packages/*.deb
 
-          echo "===== Package contents ====="
+          echo "===== package contents ====="
 
           dpkg-deb -c packages/*.deb
 
 
-      # =========================
-      # 9. 上传 deb
-      # =========================
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
