@@ -13,7 +13,7 @@ jobs:
     steps:
 
       # =========================
-      # 1. 获取代码
+      # 1. 获取项目
       # =========================
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,9 +23,24 @@ jobs:
       # 2. 安装编译工具
       # =========================
       - name: Install build tools
+        shell: bash
         run: |
+          set -e
+
           brew update
-          brew install make dpkg ldid
+
+          brew install \
+            make \
+            dpkg \
+            ldid \
+            xz
+
+          echo "===== Tool versions ====="
+
+          clang --version
+          make --version
+          ldid -V || true
+          dpkg --version
 
 
       # =========================
@@ -38,50 +53,51 @@ jobs:
 
           export THEOS="$GITHUB_WORKSPACE/theos"
 
-          mkdir -p "$THEOS"
+          echo "THEOS=$THEOS"
 
-          echo "Downloading RootHide Theos installer..."
+          rm -rf "$THEOS"
 
-          curl -fsSL \
-            https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos \
-            -o install-theos.sh
+          git clone --recursive \
+            https://github.com/roothide/theos.git \
+            "$THEOS"
 
-          echo "Patching installer to skip automatic SDK download..."
+          echo "===== Theos installed ====="
 
-          sed -i.bak \
-            '/get_sdks/,+1c\
-          mkdir -p ${THEOS}/sdks\
-          touch ${THEOS}/sdks/sdk\
-          ' \
-            install-theos.sh
-
-          bash install-theos.sh
-
-          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
-
-          echo "===== THEOS ====="
           ls -lah "$THEOS"
+
+          echo "===== Theos path ====="
+
+          realpath "$THEOS"
+
+          test -f "$THEOS/Makefile"
+
+          echo "Theos OK"
 
 
       # =========================
-      # 4. 手动安装 iPhoneOS SDK
+      # 4. 安装 iPhoneOS 16.5 SDK
       # =========================
       - name: Install iPhoneOS SDK
         shell: bash
         run: |
           set -e
 
+          export THEOS="$GITHUB_WORKSPACE/theos"
+
           mkdir -p "$THEOS/sdks"
 
-          echo "Downloading iPhoneOS 16.5 SDK..."
+          rm -f /tmp/iPhoneOS16.5.sdk.tar.xz
 
-          curl -fL \
+          curl \
+            --fail \
+            --location \
             --retry 5 \
             --retry-delay 3 \
-            https://github.com/theos/sdks/releases/latest/download/iPhoneOS16.5.sdk.tar.xz \
+            --retry-all-errors \
+            "https://github.com/theos/sdks/releases/download/master-146e41f/iPhoneOS16.5.sdk.tar.xz" \
             -o /tmp/iPhoneOS16.5.sdk.tar.xz
 
-          echo "===== SDK file ====="
+          echo "===== SDK archive ====="
 
           ls -lh /tmp/iPhoneOS16.5.sdk.tar.xz
 
@@ -95,7 +111,15 @@ jobs:
 
           echo "===== Installed SDKs ====="
 
-          ls -lah "$THEOS/sdks"
+          find "$THEOS/sdks" \
+            -maxdepth 1 \
+            -type d \
+            -name "*.sdk" \
+            -print
+
+          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
+
+          echo "iPhoneOS16.5 SDK OK"
 
 
       # =========================
@@ -106,35 +130,84 @@ jobs:
         run: |
           set -e
 
+          export THEOS="$GITHUB_WORKSPACE/theos"
+
           echo "THEOS=$THEOS"
+
+          test -f "$THEOS/Makefile"
+
+          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
 
           echo "===== SDK ====="
 
-          ls -lah "$THEOS/sdks"
+          ls -lah "$THEOS/sdks/iPhoneOS16.5.sdk" | head -30
 
-          echo "===== Make ====="
+          echo "===== Theos ====="
 
-          "$THEOS/bin/make" --version || true
+          ls -lah "$THEOS/bin" | head -30
+
+          echo "Theos check OK"
 
 
       # =========================
-      # 6. 编译 RootHide deb
+      # 6. 检查源代码
+      # =========================
+      - name: Check source files
+        shell: bash
+        run: |
+          set -e
+
+          echo "===== Repository ====="
+
+          find . \
+            -maxdepth 3 \
+            -type f \
+            -not -path "./.git/*" \
+            -print
+
+          echo "===== Makefile ====="
+
+          cat Makefile
+
+          echo "===== Source ====="
+
+          find . \
+            -maxdepth 3 \
+            \( -name "*.xm" -o -name "*.mm" -o -name "*.m" \) \
+            -print
+
+
+      # =========================
+      # 7. 编译 RootHide deb
       # =========================
       - name: Build RootHide deb
         shell: bash
         run: |
           set -e
 
-          make clean
+          export THEOS="$GITHUB_WORKSPACE/theos"
+
+          echo "===== Build environment ====="
+
+          echo "THEOS=$THEOS"
+
+          echo "SDK=$THEOS/sdks/iPhoneOS16.5.sdk"
+
+          echo "===== Clean ====="
+
+          make clean || true
+
+          echo "===== Build ====="
 
           make package \
             THEOS_PACKAGE_SCHEME=roothide \
             FINALPACKAGE=1 \
-            ARCHS=arm64e
+            ARCHS=arm64e \
+            SDKVERSION=16.5
 
 
       # =========================
-      # 7. 检查 deb
+      # 8. 检查 deb
       # =========================
       - name: Check package
         shell: bash
@@ -149,9 +222,17 @@ jobs:
 
           file packages/*.deb
 
+          echo "===== dpkg ====="
+
+          dpkg-deb -I packages/*.deb
+
+          echo "===== Package contents ====="
+
+          dpkg-deb -c packages/*.deb
+
 
       # =========================
-      # 8. 上传 deb
+      # 9. 上传 deb
       # =========================
       - name: Upload deb
         uses: actions/upload-artifact@v4
