@@ -1,8 +1,8 @@
 Package: com.sbcpufloating.monitor
 Name: SB CPU Floating
-Version: 1.0.0
+Version: 2.0.0
 Architecture: iphoneos-arm64
-Description: Display SpringBoard CPU usage in a movable floating window.
+Description: SpringBoard CPU and network monitor with configurable protection.
 Maintainer: SB CPU Floating
 Author: SB CPU Floating
 Section: Tweaks

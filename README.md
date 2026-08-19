@@ -1,24 +1,7 @@
-# SB CPU Floating
+# SB CPU Floating v2
 
-一个面向 RootHide / iOS 17 的 SpringBoard CPU 悬浮监控插件。
+本版本加入：实时网速、CPU峰值、低中高自动变色、刷新间隔、位置记忆、双击设置、穿透、异常CPU提醒，以及可选的自动SpringBoard终止保护。
 
-功能：
-- 只显示 SpringBoard CPU
-- 每秒刷新一次
-- 可拖动
-- 不监控内存
-- 不限制 CPU
-- 不杀进程
-- 不枚举其他进程
+自动注销默认关闭。开启后达到阈值并持续指定秒数才触发；触发一次后自动关闭，避免循环。
 
-## GitHub Actions
-
-上传整个工程到 GitHub 后：
-
-Actions → Build SB CPU Floating → Run workflow
-
-构建完成后：
-
-Actions → 对应运行记录 → Artifacts → SB-CPU-Floating-deb
-
-官方 RootHide 文档说明，RootHide Theos 可通过 `THEOS_PACKAGE_SCHEME=roothide` 打包。
+建议先保留当前已经成功运行的 v1 作为回退版本，再测试 v2。
