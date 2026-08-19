@@ -1,0 +1,73 @@
+name: Build SB CPU Floating
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew update
+          brew install make dpkg ldid
+
+      - name: Install RootHide Theos
+        shell: bash
+        run: |
+          set -e
+          export THEOS="$GITHUB_WORKSPACE/theos"
+          mkdir -p "$THEOS"
+
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
+
+      - name: Install iPhoneOS SDK
+        shell: bash
+        run: |
+          set -e
+
+          mkdir -p "$THEOS/sdks"
+
+          curl -L \
+            https://github.com/theos/sdks/releases/download/16.5/iPhoneOS16.5.sdk.tar.xz \
+            -o /tmp/iPhoneOS16.5.sdk.tar.xz
+
+          tar -xJf /tmp/iPhoneOS16.5.sdk.tar.xz \
+            -C "$THEOS/sdks"
+
+      - name: Build RootHide deb
+        shell: bash
+        run: |
+          set -e
+
+          make clean
+
+          make package \
+            THEOS_PACKAGE_SCHEME=roothide \
+            FINALPACKAGE=1 \
+            ARCHS=arm64e
+
+      - name: Check package
+        shell: bash
+        run: |
+          echo "===== packages ====="
+          ls -lah packages
+
+          echo "===== file ====="
+          file packages/*.deb
+
+      - name: Upload deb
+        uses: actions/upload-artifact@v4
+        with:
+          name: SB-CPU-Floating-deb
+          path: packages/*.deb
+          if-no-files-found: error
