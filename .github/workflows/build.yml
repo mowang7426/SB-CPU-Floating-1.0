@@ -11,25 +11,61 @@ jobs:
     runs-on: macos-14
 
     steps:
+
+      # =========================
+      # 1. 获取代码
+      # =========================
       - name: Checkout
         uses: actions/checkout@v4
 
+
+      # =========================
+      # 2. 安装编译工具
+      # =========================
       - name: Install build tools
         run: |
           brew update
           brew install make dpkg ldid
 
+
+      # =========================
+      # 3. 安装 RootHide Theos
+      # =========================
       - name: Install RootHide Theos
         shell: bash
         run: |
           set -e
+
           export THEOS="$GITHUB_WORKSPACE/theos"
+
           mkdir -p "$THEOS"
 
-          bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
+          echo "Downloading RootHide Theos installer..."
+
+          curl -fsSL \
+            https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos \
+            -o install-theos.sh
+
+          echo "Patching installer to skip automatic SDK download..."
+
+          sed -i.bak \
+            '/get_sdks/,+1c\
+          mkdir -p ${THEOS}/sdks\
+          touch ${THEOS}/sdks/sdk\
+          ' \
+            install-theos.sh
+
+          bash install-theos.sh
 
           echo "THEOS=$THEOS" >> "$GITHUB_ENV"
 
+          echo "===== THEOS ====="
+          ls -lah "$THEOS"
+
+
+      # =========================
+      # 4. 手动安装 iPhoneOS SDK
+      # =========================
       - name: Install iPhoneOS SDK
         shell: bash
         run: |
@@ -37,15 +73,53 @@ jobs:
 
           mkdir -p "$THEOS/sdks"
 
+          echo "Downloading iPhoneOS 16.5 SDK..."
+
           curl -fL \
+            --retry 5 \
+            --retry-delay 3 \
             https://github.com/theos/sdks/releases/latest/download/iPhoneOS16.5.sdk.tar.xz \
             -o /tmp/iPhoneOS16.5.sdk.tar.xz
 
+          echo "===== SDK file ====="
+
+          ls -lh /tmp/iPhoneOS16.5.sdk.tar.xz
+
           file /tmp/iPhoneOS16.5.sdk.tar.xz
 
-          tar -xJf /tmp/iPhoneOS16.5.sdk.tar.xz \
+          echo "===== Extract SDK ====="
+
+          tar -xJf \
+            /tmp/iPhoneOS16.5.sdk.tar.xz \
             -C "$THEOS/sdks"
 
+          echo "===== Installed SDKs ====="
+
+          ls -lah "$THEOS/sdks"
+
+
+      # =========================
+      # 5. 检查 Theos
+      # =========================
+      - name: Check Theos
+        shell: bash
+        run: |
+          set -e
+
+          echo "THEOS=$THEOS"
+
+          echo "===== SDK ====="
+
+          ls -lah "$THEOS/sdks"
+
+          echo "===== Make ====="
+
+          "$THEOS/bin/make" --version || true
+
+
+      # =========================
+      # 6. 编译 RootHide deb
+      # =========================
       - name: Build RootHide deb
         shell: bash
         run: |
@@ -58,15 +132,27 @@ jobs:
             FINALPACKAGE=1 \
             ARCHS=arm64e
 
+
+      # =========================
+      # 7. 检查 deb
+      # =========================
       - name: Check package
         shell: bash
         run: |
+          set -e
+
           echo "===== packages ====="
+
           ls -lah packages
 
           echo "===== file ====="
+
           file packages/*.deb
 
+
+      # =========================
+      # 8. 上传 deb
+      # =========================
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
