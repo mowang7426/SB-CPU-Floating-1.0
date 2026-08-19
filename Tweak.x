@@ -1,9 +1,12 @@
 #import <UIKit/UIKit.h>
 #import <QuartzCore/QuartzCore.h>
-#import <Foundation/Foundation.h>
 
 #import <mach/mach.h>
 #import <mach/mach_time.h>
+
+#import <unistd.h>
+#import <string.h>
+#import <libproc.h>
 
 @interface SBCPUFloatingView : UIView
 
@@ -12,7 +15,6 @@
 
 @property(nonatomic) uint64_t lastCPU;
 @property(nonatomic) uint64_t lastWall;
-
 @property(nonatomic) mach_timebase_info_data_t timebase;
 
 @end
@@ -20,8 +22,7 @@
 
 @implementation SBCPUFloatingView
 
-- (instancetype)init
-{
+- (instancetype)init {
     self = [super initWithFrame:CGRectMake(18, 150, 118, 36)];
 
     if (!self) {
@@ -30,14 +31,12 @@
 
     mach_timebase_info(&_timebase);
 
-    // 外观
     self.backgroundColor =
         [[UIColor blackColor] colorWithAlphaComponent:0.78];
 
     self.layer.cornerRadius = 9.0;
     self.layer.masksToBounds = YES;
 
-    // CPU文字
     _label = [[UILabel alloc] initWithFrame:self.bounds];
 
     _label.autoresizingMask =
@@ -66,7 +65,7 @@
     [self addGestureRecognizer:pan];
 
 
-    // 每秒采样一次
+    // 每秒刷新一次
     _timer =
         [CADisplayLink displayLinkWithTarget:self
                                     selector:@selector(sample)];
@@ -80,63 +79,65 @@
 }
 
 
-- (void)dealloc
-{
+- (void)dealloc {
     [_timer invalidate];
 }
 
 
-#pragma mark - Mach time 转纳秒
+#pragma mark - Mach time
 
-- (uint64_t)wallToNsec:(uint64_t)t
-{
+- (uint64_t)wallToNsec:(uint64_t)t {
+
     return t *
-           (uint64_t)_timebase.numer /
-           (uint64_t)_timebase.denom;
+        (uint64_t)_timebase.numer /
+        (uint64_t)_timebase.denom;
 }
 
 
-#pragma mark - CPU采样
+#pragma mark - CPU
 
-- (void)sample
-{
+- (void)sample {
+
+    /*
+     * 当前 tweak 只注入 SpringBoard。
+     *
+     * mach_task_self() 获取当前进程，也就是 SpringBoard。
+     *
+     * 不进行进程枚举，因此不会因为扫描大量进程
+     * 而额外增加 SpringBoard CPU。
+     */
+
     task_thread_times_info_data_t info;
 
     mach_msg_type_number_t count =
         TASK_THREAD_TIMES_INFO_COUNT;
 
-    kern_return_t result =
-        task_info(mach_task_self(),
-                  TASK_THREAD_TIMES_INFO,
-                  (task_info_t)&info,
-                  &count);
 
-    if (result != KERN_SUCCESS) {
+    kern_return_t kr =
+        task_info(
+            mach_task_self(),
+            TASK_THREAD_TIMES_INFO,
+            (task_info_t)&info,
+            &count
+        );
+
+
+    if (kr != KERN_SUCCESS) {
         return;
     }
 
 
-    // 用户态CPU时间
-    uint64_t userCPU =
+    uint64_t cpu =
         ((uint64_t)info.user_time.seconds * 1000000000ULL) +
-        ((uint64_t)info.user_time.microseconds * 1000ULL);
-
-
-    // 内核态CPU时间
-    uint64_t systemCPU =
+        ((uint64_t)info.user_time.microseconds * 1000ULL) +
         ((uint64_t)info.system_time.seconds * 1000000000ULL) +
         ((uint64_t)info.system_time.microseconds * 1000ULL);
 
 
-    // 总CPU时间
-    uint64_t cpu = userCPU + systemCPU;
-
-
-    // 当前墙钟时间
     uint64_t wall = mach_absolute_time();
 
 
-    // 第一次采样只记录基准
+    // 第一次采样，只保存基准
     if (_lastCPU == 0 || _lastWall == 0) {
 
         _lastCPU = cpu;
@@ -157,15 +158,18 @@
     _lastWall = wall;
 
 
-    // CPU时间 → 秒
+    if (dWall == 0) {
+        return;
+    }
+
+
     double cpuSeconds =
         (double)dCPU / 1000000000.0;
 
 
-    // 墙钟时间 → 纳秒 → 秒
     double wallSeconds =
-        (double)[self wallToNsec:dWall]
-        / 1000000000.0;
+        (double)[self wallToNsec:dWall] /
+        1000000000.0;
 
 
     if (wallSeconds <= 0.0) {
@@ -173,7 +177,6 @@
     }
 
 
-    // SpringBoard当前进程CPU占用
     double percent =
         (cpuSeconds / wallSeconds) * 100.0;
 
@@ -188,16 +191,20 @@
     }
 
 
-    self.label.text =
-        [NSString stringWithFormat:@"SB CPU %5.1f%%",
-                                   percent];
+    dispatch_async(dispatch_get_main_queue(), ^{
+
+        self.label.text =
+            [NSString stringWithFormat:@"SB CPU %5.1f%%",
+                                       percent];
+
+    });
 }
 
 
-#pragma mark - 拖动
+#pragma mark - Drag
 
-- (void)handlePan:(UIPanGestureRecognizer *)g
-{
+- (void)handlePan:(UIPanGestureRecognizer *)g {
+
     UIView *superview = self.superview;
 
     if (!superview) {
@@ -205,40 +212,40 @@
     }
 
 
-    CGPoint translation =
+    CGPoint t =
         [g translationInView:superview];
 
 
     self.center =
-        CGPointMake(self.center.x + translation.x,
-                    self.center.y + translation.y);
+        CGPointMake(
+            self.center.x + t.x,
+            self.center.y + t.y
+        );
 
 
     [g setTranslation:CGPointZero
              inView:superview];
 
 
-    // 防止拖出屏幕
     CGRect bounds =
         superview.bounds;
 
 
-    CGFloat halfWidth =
+    CGFloat hw =
         self.bounds.size.width / 2.0;
 
-
-    CGFloat halfHeight =
+    CGFloat hh =
         self.bounds.size.height / 2.0;
 
 
     self.center =
         CGPointMake(
-            MAX(halfWidth,
-                MIN(CGRectGetWidth(bounds) - halfWidth,
+            MAX(hw,
+                MIN(CGRectGetWidth(bounds) - hw,
                     self.center.x)),
 
-            MAX(halfHeight,
-                MIN(CGRectGetHeight(bounds) - halfHeight,
+            MAX(hh,
+                MIN(CGRectGetHeight(bounds) - hh,
                     self.center.y))
         );
 }
@@ -247,13 +254,20 @@
 
 
 
-#pragma mark - 安装悬浮窗
+#pragma mark - Install
 
-static void SBCPUInstall(void)
-{
+static void SBCPUInstall(void) {
+
+    if (getpid() <= 0) {
+        return;
+    }
+
+
     dispatch_after(
-        dispatch_time(DISPATCH_TIME_NOW,
-                      (int64_t)(1.0 * NSEC_PER_SEC)),
+        dispatch_time(
+            DISPATCH_TIME_NOW,
+            (int64_t)(1.0 * NSEC_PER_SEC)
+        ),
 
         dispatch_get_main_queue(),
 
@@ -271,7 +285,6 @@ static void SBCPUInstall(void)
             UIWindow *target = nil;
 
 
-            // 找正常的SpringBoard窗口
             for (UIWindow *window in app.windows) {
 
                 if (!window.hidden &&
@@ -279,7 +292,6 @@ static void SBCPUInstall(void)
                     window.windowLevel == UIWindowLevelNormal) {
 
                     target = window;
-
                     break;
                 }
             }
@@ -318,30 +330,38 @@ static void SBCPUInstall(void)
 
 
 
-#pragma mark - RootHide注入入口
+#pragma mark - Constructor
 
-%ctor
-{
-    /*
-     不再使用：
-
-     proc_pidpath()
-     libproc.h
-
-     因此不需要libproc.h。
-    */
-
-
-    NSString *processName =
-        [NSProcessInfo processInfo].processName;
-
+%ctor {
 
     /*
-     RootHide可能把Tweak注入多个进程。
-     只有SpringBoard才启动悬浮CPU监控。
-    */
+     * RootHide 可能会把 dylib 加载到多个进程。
+     *
+     * 这里只允许 SpringBoard 创建 CPU 监控。
+     */
 
-    if ([processName isEqualToString:@"SpringBoard"]) {
+    char path[PROC_PIDPATHINFO_MAXSIZE] = {0};
+
+
+    int result =
+        proc_pidpath(
+            getpid(),
+            path,
+            sizeof(path)
+        );
+
+
+    if (result <= 0) {
+        return;
+    }
+
+
+    NSString *exe =
+        [NSString stringWithUTF8String:path];
+
+
+    if ([exe.lastPathComponent
+            isEqualToString:@"SpringBoard"]) {
 
         SBCPUInstall();
     }
