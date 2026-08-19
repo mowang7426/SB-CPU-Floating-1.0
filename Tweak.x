@@ -4,6 +4,8 @@
 #import <mach/mach_time.h>
 #import <unistd.h>
 #import <string.h>
+#import <libproc.h>
+#import <unistd.h>
 
 @interface SBCPUFloatingView : UIView
 @property(nonatomic,strong) UILabel *label;
