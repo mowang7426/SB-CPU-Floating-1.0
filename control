@@ -1,0 +1,9 @@
+Package: com.oynn.sbcpu-floating
+Name: SB CPU Floating
+Version: 1.0.0
+Architecture: iphoneos-arm64e
+Description: Lightweight floating SpringBoard CPU monitor for RootHide.
+Maintainer: OYNN
+Author: OYNN
+Section: Tweaks
+Depends: firmware (>= 15.0)
