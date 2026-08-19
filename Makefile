@@ -1,15 +1,20 @@
-TARGET := iphone:clang:16.5:14.0
+TARGET := iphone:clang:16.5:13.0
 
 ARCHS = arm64e
 
-INSTALL_TARGET_PROCESSES = SpringBoard
+THEOS_PACKAGE_SCHEME = roothide
 
 include $(THEOS)/makefiles/common.mk
 
+
 TWEAK_NAME = SBCPUFloating
+
 
 SBCPUFloating_FILES = Tweak.xm
 
 SBCPUFloating_CFLAGS = -fobjc-arc
+
+SBCPUFloating_FRAMEWORKS = UIKit QuartzCore
+
 
 include $(THEOS_MAKE_PATH)/tweak.mk
