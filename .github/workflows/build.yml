@@ -37,9 +37,11 @@ jobs:
 
           mkdir -p "$THEOS/sdks"
 
-          curl -L \
-            https://github.com/theos/sdks/releases/download/16.5/iPhoneOS16.5.sdk.tar.xz \
+          curl -fL \
+            https://github.com/theos/sdks/releases/latest/download/iPhoneOS16.5.sdk.tar.xz \
             -o /tmp/iPhoneOS16.5.sdk.tar.xz
+
+          file /tmp/iPhoneOS16.5.sdk.tar.xz
 
           tar -xJf /tmp/iPhoneOS16.5.sdk.tar.xz \
             -C "$THEOS/sdks"
