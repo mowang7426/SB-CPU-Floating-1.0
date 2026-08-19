@@ -17,19 +17,9 @@ jobs:
 
 
       - name: Install build tools
-        shell: bash
         run: |
-          set -e
-
           brew update
-
-          brew install make dpkg ldid xz
-
-          echo "===== Tools ====="
-          clang --version
-          make --version
-          ldid -V || true
-          dpkg --version
+          brew install make dpkg ldid
 
 
       - name: Install RootHide Theos
@@ -39,25 +29,11 @@ jobs:
 
           export THEOS="$GITHUB_WORKSPACE/theos"
 
-          rm -rf "$THEOS"
+          mkdir -p "$THEOS"
 
-          git clone --recursive \
-            https://github.com/roothide/theos.git \
-            "$THEOS"
+          bash -c "$(curl -fsSL https://raw.githubusercontent.com/roothide/theos/master/bin/install-theos)"
 
-          echo "===== RootHide Theos installed ====="
-
-          ls -lah "$THEOS"
-
-          echo "===== Theos bin ====="
-
-          ls -lah "$THEOS/bin" | head -40
-
-          echo "===== Theos SDK directory ====="
-
-          mkdir -p "$THEOS/sdks"
-
-          echo "Theos clone OK"
+          echo "THEOS=$THEOS" >> "$GITHUB_ENV"
 
 
       - name: Install iPhoneOS SDK
@@ -65,95 +41,42 @@ jobs:
         run: |
           set -e
 
-          export THEOS="$GITHUB_WORKSPACE/theos"
-
           mkdir -p "$THEOS/sdks"
 
-          echo "===== Download iPhoneOS 16.5 SDK ====="
-
-          curl \
-            --fail \
-            --location \
-            --retry 5 \
-            --retry-delay 3 \
-            --retry-all-errors \
-            "https://github.com/theos/sdks/releases/download/master-146e41f/iPhoneOS16.5.sdk.tar.xz" \
+          curl -fL \
+            https://github.com/theos/sdks/releases/latest/download/iPhoneOS16.5.sdk.tar.xz \
             -o /tmp/iPhoneOS16.5.sdk.tar.xz
-
-          echo "===== SDK archive ====="
-
-          ls -lh /tmp/iPhoneOS16.5.sdk.tar.xz
 
           file /tmp/iPhoneOS16.5.sdk.tar.xz
 
-          echo "===== Extract SDK ====="
-
-          tar -xJf \
-            /tmp/iPhoneOS16.5.sdk.tar.xz \
+          tar -xJf /tmp/iPhoneOS16.5.sdk.tar.xz \
             -C "$THEOS/sdks"
 
-          echo "===== Installed SDKs ====="
 
-          find "$THEOS/sdks" \
-            -maxdepth 1 \
-            -type d \
-            -name "*.sdk" \
-            -print
-
-          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
-
-          echo "iPhoneOS16.5 SDK OK"
-
-
-      - name: Check Theos and SDK
+      - name: Check project files
         shell: bash
         run: |
-          set -e
+          echo "===== Project files ====="
 
-          export THEOS="$GITHUB_WORKSPACE/theos"
+          ls -lah
 
-          echo "===== THEOS ====="
-          echo "$THEOS"
+          echo "===== Tweak.xm ====="
 
-          echo "===== SDK ====="
-          ls -lah "$THEOS/sdks"
-
-          echo "===== iPhoneOS16.5.sdk ====="
-          ls -lah "$THEOS/sdks/iPhoneOS16.5.sdk" | head -30
-
-          echo "===== Required Theos directories ====="
-
-          test -d "$THEOS/bin"
-          test -d "$THEOS/makefiles"
-          test -d "$THEOS/toolchain"
-          test -d "$THEOS/sdks/iPhoneOS16.5.sdk"
-
-          echo "Theos + SDK OK"
-
-
-      - name: Check source files
-        shell: bash
-        run: |
-          set -e
-
-          echo "===== Repository ====="
-
-          find . \
-            -maxdepth 3 \
-            -type f \
-            -not -path "./.git/*" \
-            -print
+          test -f Tweak.xm
 
           echo "===== Makefile ====="
 
-          cat Makefile
+          test -f Makefile
 
-          echo "===== Source ====="
+          echo "===== control ====="
 
-          find . \
-            -maxdepth 3 \
-            \( -name "*.xm" -o -name "*.mm" -o -name "*.m" \) \
-            -print
+          test -f control
+
+          echo "===== SBCPUFloating.plist ====="
+
+          test -f SBCPUFloating.plist
+
+          echo "All required files exist."
 
 
       - name: Build RootHide deb
@@ -161,19 +84,20 @@ jobs:
         run: |
           set -e
 
-          export THEOS="$GITHUB_WORKSPACE/theos"
+          echo "===== THEOS ====="
+          echo "$THEOS"
+
+          echo "===== SDK ====="
+          ls -lah "$THEOS/sdks"
 
           echo "===== Build ====="
 
-          echo "THEOS=$THEOS"
-
-          make clean || true
+          make clean
 
           make package \
             THEOS_PACKAGE_SCHEME=roothide \
             FINALPACKAGE=1 \
-            ARCHS=arm64e \
-            SDKVERSION=16.5
+            ARCHS=arm64e
 
 
       - name: Check package
@@ -188,14 +112,6 @@ jobs:
           echo "===== file ====="
 
           file packages/*.deb
-
-          echo "===== package information ====="
-
-          dpkg-deb -I packages/*.deb
-
-          echo "===== package contents ====="
-
-          dpkg-deb -c packages/*.deb
 
 
       - name: Upload deb
