@@ -1,6 +1,5 @@
 name: Build SBCPUFloating
 
-
 on:
   push:
     branches:
@@ -24,7 +23,7 @@ jobs:
 
 
 
-    - name: Update system
+    - name: Install dependencies
 
       run: |
 
@@ -40,6 +39,8 @@ jobs:
           perl \
           curl \
           python3 \
+          libplist-dev \
+          libxml2-dev \
           build-essential
 
 
@@ -48,15 +49,14 @@ jobs:
 
       run: |
 
-        git clone https://github.com/ProcursusTeam/ldid.git ldid-source
+        mkdir -p $HOME/bin
 
-        cd ldid-source
+        curl -L https://github.com/ProcursusTeam/ldid/releases/latest/download/ldid \
+        -o $HOME/bin/ldid
 
-        make
+        chmod +x $HOME/bin/ldid
 
-        sudo cp ldid /usr/local/bin/ldid
-
-        sudo chmod +x /usr/local/bin/ldid
+        echo "$HOME/bin" >> $GITHUB_PATH
 
         ldid --version || true
 
@@ -78,9 +78,7 @@ jobs:
 
         mkdir -p $HOME/theos/sdks
 
-
         git clone --depth=1 https://github.com/xybp888/iOS-SDKs.git sdkrepo
-
 
         cp -r sdkrepo/*.sdk $HOME/theos/sdks/
 
@@ -92,9 +90,7 @@ jobs:
 
         export THEOS=$HOME/theos
 
-
         make clean || true
-
 
         make package FINALPACKAGE=1
 
