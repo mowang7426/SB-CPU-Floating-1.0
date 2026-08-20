@@ -15,21 +15,12 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Install Dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential clang libssl-dev git
-
-    - name: Setup Theos & Toolchain
-      run: |
-        git clone --recursive https://github.com/theos/theos.git $HOME/theos
-        curl -LO https://github.com/orion-developer/iOS-Toolchains/releases/download/Ubuntu-22.04/arm64-apple-darwin14.tar.xz
-        mkdir -p $HOME/theos/toolchain/linux/iphone
-        tar -xf arm64-apple-darwin14.tar.xz -C $HOME/theos/toolchain/linux/iphone
+    - name: Setup Theos
+      uses: theos/setup-theos@v1
 
     - name: Build tweak
       run: |
-        export THEOS=$HOME/theos
+        export THEOS=/opt/theos
         make clean package FINALPACKAGE=1
 
     - name: Upload deb artifact
