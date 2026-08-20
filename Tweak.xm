@@ -1,6 +1,21 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#import <libproc.h>
+#impo#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+
+// 补充 proc 宏定义与 C 函数声明，代替 #import <libproc.h>
+#ifndef PROC_PIDPATHINFO_MAXSIZE
+#define PROC_PIDPATHINFO_MAXSIZE 1024
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+int proc_pidpath(int pid, void *buffer, uint32_t buffersize);
+#ifdef __cplusplus
+}
+#endif
+
 
 // ===== SB CPU Floating 1.1.0 configuration =====
 // plist:
