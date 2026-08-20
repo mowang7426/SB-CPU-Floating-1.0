@@ -2,42 +2,46 @@ name: Build RootHide deb
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 
 jobs:
 
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
 
     steps:
 
 
-    - name: Checkout source
+    - name: Checkout
       uses: actions/checkout@v4
-      with:
-        submodules: recursive
+
+
+
+    - name: Fix apt sources
+      run: |
+
+        sudo rm -rf /var/lib/apt/lists/*
+
+        sudo apt clean
+
+        sudo apt update
 
 
 
     - name: Install dependencies
-      run:
-
-        sudo apt update
+      run: |
 
         sudo apt install -y \
           git \
           clang \
           make \
+          curl \
           xz-utils \
           fakeroot \
           dpkg-dev \
           perl \
-          curl \
           python3
 
 
@@ -46,7 +50,7 @@ jobs:
       run: |
 
         sudo curl -L \
-        https://github.com/ProcursusTeam/ldid/releases/latest/download/ldid_linux \
+        https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5/ldid_linux \
         -o /usr/local/bin/ldid
 
         sudo chmod +x /usr/local/bin/ldid
@@ -60,17 +64,12 @@ jobs:
 
         export THEOS=$HOME/theos
 
-        rm -rf $THEOS
-
         git clone --recursive \
         https://github.com/theos/theos.git \
         $THEOS
 
 
         echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-
-
-        chmod +x $THEOS/bin/bootstrap.sh
 
 
         $THEOS/bin/bootstrap.sh
@@ -80,47 +79,32 @@ jobs:
     - name: Install SDK
       run: |
 
-        export THEOS=$HOME/theos
+        mkdir -p $HOME/theos/sdks
 
-
-        mkdir -p $THEOS/sdks
-
-
-        cd $THEOS/sdks
-
-
-        rm -rf *
+        cd $HOME/theos/sdks
 
 
         git clone --depth=1 \
-        https://github.com/theos/sdks.git sdkrepo
+        https://github.com/theos/sdks.git sdk
 
 
-        cp -r sdkrepo/*.sdk .
+        cp sdk/*.sdk .
 
 
-        rm -rf sdkrepo
-
-
-        ls -la
+        rm -rf sdk
 
 
 
-    - name: Check project
+    - name: Check files
       run: |
 
-        echo "===== PROJECT ====="
-
         ls -la
-
-
-        echo "===== FILES ====="
 
         find . -maxdepth 2 -type f
 
 
 
-    - name: Build package
+    - name: Build
       run: |
 
         export THEOS=$HOME/theos
@@ -128,18 +112,15 @@ jobs:
 
         make clean
 
-
         make package FINALPACKAGE=1
 
 
 
-    - name: Upload deb
+    - name: Upload
       uses: actions/upload-artifact@v4
 
       with:
 
-        name: SB-CPU-Floating-deb
+        name: SB-CPU-Floating
 
-        path:
-
-          packages/*.deb
+        path: packages/*.deb
