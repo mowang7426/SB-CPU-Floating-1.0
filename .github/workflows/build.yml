@@ -4,20 +4,15 @@ on:
   push:
     branches:
       - main
-
   workflow_dispatch:
 
-
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
-
 
     steps:
 
-    - name: Checkout source
+    - name: Checkout
       uses: actions/checkout@v4
 
 
@@ -27,58 +22,61 @@ jobs:
         sudo apt install -y \
           git \
           curl \
+          xz-utils \
+          ldid \
           make \
           clang \
-          perl \
-          xz-utils \
-          python3
+          libplist-dev \
+          libxml2-dev
 
 
     - name: Install Theos
       run: |
         git clone --recursive https://github.com/theos/theos.git $HOME/theos
-
-
-    - name: Setup Theos environment
-      run: |
         echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-        mkdir -p $HOME/theos/toolchain/linux/iphone/bin
 
-        ln -sf $(which clang) \
-        $HOME/theos/toolchain/linux/iphone/bin/clang
-
-        ln -sf $(which clang++) \
-        $HOME/theos/toolchain/linux/iphone/bin/clang++
-
-
-    - name: Install iOS SDK
+    - name: Install iPhone SDK
       run: |
-        git clone https://github.com/theos/sdks.git /tmp/sdks
-
         mkdir -p $HOME/theos/sdks
 
-        cp -r /tmp/sdks/*.sdk \
-        $HOME/theos/sdks/ || true
+        curl -L \
+        https://github.com/theos/sdks/releases/download/master/iPhoneOS16.5.sdk.tar.xz \
+        -o sdk.tar.xz
+
+        tar -xf sdk.tar.xz \
+        -C $HOME/theos/sdks
+
+
+    - name: Setup toolchain
+      run: |
+        export THEOS=$HOME/theos
+
+        mkdir -p $THEOS/toolchain/linux/iphone/bin
+
+        ln -sf $(which clang) \
+        $THEOS/toolchain/linux/iphone/bin/clang
+
+        ln -sf $(which clang++) \
+        $THEOS/toolchain/linux/iphone/bin/clang++
 
 
     - name: Check environment
       run: |
-        echo $THEOS
-        ls $THEOS
-        ls $THEOS/sdks || true
+        export THEOS=$HOME/theos
+        clang --version
+        ls $THEOS/sdks
 
 
     - name: Build tweak
       run: |
-        make clean || true
+        export THEOS=$HOME/theos
+        make clean
         make package FINALPACKAGE=1
 
 
     - name: Upload deb
       uses: actions/upload-artifact@v4
-
       with:
         name: SB-CPU-Floating-deb
-
         path: packages/*.deb
