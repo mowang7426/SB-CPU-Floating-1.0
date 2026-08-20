@@ -3,8 +3,10 @@ name: Build SB CPU Floating
 on:
   workflow_dispatch:
 
+
 jobs:
   build:
+
     runs-on: ubuntu-22.04
 
     steps:
@@ -24,7 +26,6 @@ jobs:
           make \
           clang \
           llvm \
-          ldid \
           libplist-dev \
           libplist-utils \
           libxml2-dev \
@@ -33,11 +34,26 @@ jobs:
           xz-utils
 
 
+    - name: Install ldid
+      run: |
+
+        sudo curl -L \
+        https://github.com/theos/ldid/releases/download/v2.1.5-procursus2/ldid_linux_amd64 \
+        -o /usr/local/bin/ldid
+
+        sudo chmod +x /usr/local/bin/ldid
+
+        ldid -h || true
+
+
     - name: Install Theos
       run: |
+
         export THEOS=$HOME/theos
 
-        git clone --recursive https://github.com/theos/theos.git $THEOS
+        git clone --recursive \
+        https://github.com/theos/theos.git \
+        $THEOS
 
         echo "THEOS=$THEOS" >> $GITHUB_ENV
 
@@ -56,8 +72,6 @@ jobs:
       run: |
 
         echo $THEOS
-
-        ls $THEOS
 
         clang --version
 
