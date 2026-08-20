@@ -1,7 +1,10 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
-#impo#import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
+#import <QuartzCore/QuartzCore.h>
+#import <mach/mach.h>
+#import <mach/mach_time.h>
+#import <unistd.h>
+#import <string.h>
 
 // 补充 proc 宏定义与 C 函数声明，代替 #import <libproc.h>
 #ifndef PROC_PIDPATHINFO_MAXSIZE
@@ -15,7 +18,6 @@ int proc_pidpath(int pid, void *buffer, uint32_t buffersize);
 #ifdef __cplusplus
 }
 #endif
-
 
 // ===== SB CPU Floating 1.1.0 configuration =====
 // plist:
@@ -45,13 +47,6 @@ static BOOL SBCAutoRespringValue(void) {
     NSNumber *n = SBCPUConfig()[@"AutoRespring"];
     return n ? n.boolValue : NO;
 }
-
-#import <UIKit/UIKit.h>
-#import <QuartzCore/QuartzCore.h>
-#import <mach/mach.h>
-#import <mach/mach_time.h>
-#import <unistd.h>
-#import <string.h>
 
 @interface SBCPUFloatingView : UIView
 @property(nonatomic,strong) UILabel *label;
@@ -177,7 +172,22 @@ static void SBCPUInstall(void) {
             }
         }
 
-        if (!target) target = app.keyWindow;
+        if (!target) {
+            for (UIScene *scene in app.connectedScenes) {
+                if (scene.activationState == UISceneActivationStateForegroundActive &&
+                    [scene isKindOfClass:[UIWindowScene class]]) {
+                    UIWindowScene *windowScene = (UIWindowScene *)scene;
+                    for (UIWindow *window in windowScene.windows) {
+                        if (window.isKeyWindow) {
+                            target = window;
+                            break;
+                        }
+                    }
+                }
+                if (target) break;
+            }
+        }
+
         if (!target) return;
 
         for (UIView *subview in target.subviews) {
