@@ -1,100 +1,30 @@
-name: Build SB CPU Floating
+name: Build Tweak
 
 on:
+  push:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
   build:
-
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
 
-    - name: Checkout
-      uses: actions/checkout@v4
-
-
-    - name: Install dependencies
-      run: |
-        sudo apt update
-
-        sudo apt install -y \
-          git \
-          curl \
-          wget \
-          make \
-          clang \
-          llvm \
-          libplist-dev \
-          libplist-utils \
-          libxml2-dev \
-          libssl-dev \
-          pkg-config \
-          xz-utils
-
-
-    - name: Install ldid
-      run: |
-        git clone https://github.com/ProcursusTeam/ldid.git
-
-        cd ldid
-
-        make
-
-        sudo cp ldid /usr/local/bin/ldid
-
-        sudo chmod +x /usr/local/bin/ldid
-
-        ldid -h || true
-
-
-    - name: Install Theos
-      run: |
-
-        git clone --recursive \
-        https://github.com/theos/theos.git \
-        $HOME/theos
-
-        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-
-
-    - name: Install iOS SDK
-      run: |
-
-        git clone https://github.com/theos/sdks.git
-
-        mkdir -p $THEOS/sdks
-
-        cp -r sdks/iPhoneOS*.sdk $THEOS/sdks/
-
-
-    - name: Check environment
-      run: |
-
-        echo $THEOS
-
-        clang --version
-
-        ldid -h || true
-
+    - name: Setup Theos
+      uses: prepare-theos/action-setup-theos@v1
 
     - name: Build tweak
       run: |
-
         export THEOS=$HOME/theos
+        make clean package FINALPACKAGE=1
 
-        export THEOS_PACKAGE_SCHEME=rootless
-
-        make clean
-
-        make FINALPACKAGE=1
-
-
-    - name: Upload deb
-      uses: actions/upload-artifact@v4
-
+    - name: Upload deb artifact
+      uses: actions/upload-artifact@v3
       with:
-
-        name: SB-CPU-Floating-deb
-
+        name: deb-package
         path: packages/*.deb
