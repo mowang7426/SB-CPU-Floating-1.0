@@ -1,3 +1,6 @@
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+#import <libproc.h>
 
 // ===== SB CPU Floating 1.1.0 configuration =====
 // plist:
