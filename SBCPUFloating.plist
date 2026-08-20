@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CPUThreshold</key>
+    <integer>85</integer>
+
+    <key>HoldTime</key>
+    <integer>10</integer>
+
+    <key>AutoRespring</key>
+    <false/>
+
+    <key>RefreshInterval</key>
+    <real>1</real>
+
+    <key>LaunchProtection</key>
+    <integer>60</integer>
+
+    <key>Cooldown</key>
+    <integer>300</integer>
+
+    <key>WindowX</key>
+    <real>0</real>
+
+    <key>WindowY</key>
+    <real>0</real>
+</dict>
+</plist>
