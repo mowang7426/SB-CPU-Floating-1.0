@@ -5,7 +5,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
 
@@ -13,17 +13,16 @@ jobs:
       uses: actions/checkout@v4
 
 
-    - name: Install dependencies
+    - name: Install packages
       run: |
         sudo apt update
         sudo apt install -y \
           git \
           curl \
           make \
-          clang \
-          ldid \
-          xz-utils \
+          perl \
           python3 \
+          xz-utils \
           fakeroot \
           dpkg-dev
 
@@ -33,22 +32,25 @@ jobs:
         git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
 
-    - name: Install toolchain
+    - name: Install iPhone toolchain
       run: |
         mkdir -p $HOME/theos/toolchain/linux/iphone/bin
 
-        wget -q https://github.com/theos/sdks/releases/download/master/iphoneos15.6.sdk.tar.xz \
-        -O sdk.tar.xz
+        curl -L https://github.com/theos/sdks/releases/download/master/iphone-clang.tar.xz \
+        -o clang.tar.xz
 
-        mkdir -p $HOME/theos/sdks
-
-        tar -xf sdk.tar.xz -C $HOME/theos/sdks
+        tar xf clang.tar.xz -C $HOME/theos/toolchain/linux/iphone
 
 
-    - name: Setup
+    - name: Environment
       run: |
         echo "THEOS=$HOME/theos" >> $GITHUB_ENV
         echo "$HOME/theos/bin" >> $GITHUB_PATH
+
+
+    - name: Check toolchain
+      run: |
+        ls -la $HOME/theos/toolchain/linux/iphone/bin
 
 
     - name: Build tweak
@@ -61,5 +63,5 @@ jobs:
     - name: Upload deb
       uses: actions/upload-artifact@v4
       with:
-        name: SB-CPU-Floating
+        name: SB-CPU-Floating-deb
         path: packages/*.deb
