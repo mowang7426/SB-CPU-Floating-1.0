@@ -11,38 +11,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y git curl xz-utils make clang perl
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Install Theos
-        run: |
-          git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
-      - name: Install iPhone toolchain
-        run: |
-          mkdir -p $HOME/theos/toolchain/linux/iphone/bin
-          
-          git clone https://github.com/theos/sdks.git /tmp/sdks
-          
-          cp -r /tmp/sdks/* $HOME/theos/sdks/
+    - name: Install packages
+      run: |
+        sudo apt update
+        sudo apt install -y git curl xz-utils make perl clang
 
-      - name: Install SDK
-        run: |
-          ls $HOME/theos/sdks
 
-      - name: Build tweak
-        run: |
-          export THEOS=$HOME/theos
-          make clean || true
-          make package FINALPACKAGE=1
+    - name: Install Theos
+      run: |
+        git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
-      - name: Upload deb
-        uses: actions/upload-artifact@v4
-        with:
-          name: SB-CPU-Floating-deb
-          path: packages/*.deb
+
+    - name: Install iPhone toolchain
+      run: |
+        mkdir -p $HOME/theos/toolchain/linux/iphone
+
+        curl -L https://github.com/theos/sdks/releases/download/master/iphone-clang-linux.tar.xz \
+        -o clang.tar.xz
+
+        tar xf clang.tar.xz \
+        -C $HOME/theos/toolchain/linux/iphone
+
+
+    - name: Install SDK
+      run: |
+        git clone https://github.com/theos/sdks.git $HOME/theos/sdks
+
+
+    - name: Build
+      run: |
+        export THEOS=$HOME/theos
+        make clean || true
+        make package FINALPACKAGE=1
+
+
+    - name: Upload deb
+      uses: actions/upload-artifact@v4
+      with:
+        name: SB-CPU-Floating
+        path: packages/*.deb
