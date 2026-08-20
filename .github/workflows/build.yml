@@ -27,13 +27,15 @@ jobs:
         run: |
           export THEOS=$HOME/theos
 
+          rm -rf $THEOS/sdks
           mkdir -p $THEOS/sdks
 
-          if [ -z "$(ls -A $THEOS/sdks)" ]; then
-            git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks
-          else
-            echo "SDK already exists"
-          fi
+          git clone --depth=1 https://github.com/theos/sdks.git /tmp/theos-sdks
+
+          find /tmp/theos-sdks -name "*.sdk" -type d -exec cp -R {} $THEOS/sdks/ \;
+
+          echo "===== Installed SDKs ====="
+          ls -la $THEOS/sdks
 
       - name: Build package
         run: |
