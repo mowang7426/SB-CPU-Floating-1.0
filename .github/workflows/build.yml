@@ -1,79 +1,56 @@
 name: Build SB CPU Floating
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
 
     steps:
 
-    - name: Checkout
+    - name: Checkout source
       uses: actions/checkout@v4
-
 
     - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install -y \
           git \
+          make \
+          clang \
           curl \
           xz-utils \
           ldid \
-          make \
-          clang \
-          libplist-dev \
-          libxml2-dev
-
+          python3
 
     - name: Install Theos
       run: |
         git clone --recursive https://github.com/theos/theos.git $HOME/theos
+
+    - name: Setup iPhone toolchain
+      run: |
+        mkdir -p $HOME/theos/toolchain/linux/iphone/bin
+
+        cd $HOME/theos/toolchain/linux/iphone
+
+        curl -L https://github.com/theos/sdks/releases/download/master/iPhoneOS17.0.sdk.tar.xz -o sdk.tar.xz
+
+        tar xf sdk.tar.xz -C $HOME/theos/sdks
+
+    - name: Setup environment
+      run: |
         echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-
-
-    - name: Install iPhone SDK
-      run: |
-        mkdir -p $HOME/theos/sdks
-
-        curl -L \
-        https://github.com/theos/sdks/releases/download/master/iPhoneOS16.5.sdk.tar.xz \
-        -o sdk.tar.xz
-
-        tar -xf sdk.tar.xz \
-        -C $HOME/theos/sdks
-
-
-    - name: Setup toolchain
-      run: |
-        export THEOS=$HOME/theos
-
-        mkdir -p $THEOS/toolchain/linux/iphone/bin
-
-        ln -sf $(which clang) \
-        $THEOS/toolchain/linux/iphone/bin/clang
-
-        ln -sf $(which clang++) \
-        $THEOS/toolchain/linux/iphone/bin/clang++
-
-
-    - name: Check environment
-      run: |
-        export THEOS=$HOME/theos
-        clang --version
-        ls $THEOS/sdks
-
+        echo "$HOME/theos/bin" >> $GITHUB_PATH
 
     - name: Build tweak
       run: |
         export THEOS=$HOME/theos
         make clean
-        make package FINALPACKAGE=1
-
+        make FINALPACKAGE=1
 
     - name: Upload deb
       uses: actions/upload-artifact@v4
