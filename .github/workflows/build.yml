@@ -20,8 +20,19 @@ jobs:
       - name: Install Theos
         run: |
           export THEOS=$HOME/theos
+
           git clone --recursive https://github.com/theos/theos.git $THEOS
+
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
+          mkdir -p $THEOS/toolchain/linux
+
+          git clone --depth=1 https://github.com/theos/llvm-project.git $THEOS/toolchain/linux/iphone
+
+          chmod +x $THEOS/toolchain/linux/iphone/bin/* || true
+
+          echo "===== Toolchain ====="
+          ls -la $THEOS/toolchain/linux/iphone/bin
 
       - name: Install iPhoneOS SDK
         run: |
