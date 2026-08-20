@@ -3,7 +3,6 @@ name: Build SB CPU Floating
 on:
   workflow_dispatch:
 
-
 jobs:
   build:
 
@@ -36,10 +35,13 @@ jobs:
 
     - name: Install ldid
       run: |
+        git clone https://github.com/ProcursusTeam/ldid.git
 
-        sudo curl -L \
-        https://github.com/theos/ldid/releases/download/v2.1.5-procursus2/ldid_linux_amd64 \
-        -o /usr/local/bin/ldid
+        cd ldid
+
+        make
+
+        sudo cp ldid /usr/local/bin/ldid
 
         sudo chmod +x /usr/local/bin/ldid
 
@@ -49,13 +51,11 @@ jobs:
     - name: Install Theos
       run: |
 
-        export THEOS=$HOME/theos
-
         git clone --recursive \
         https://github.com/theos/theos.git \
-        $THEOS
+        $HOME/theos
 
-        echo "THEOS=$THEOS" >> $GITHUB_ENV
+        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
 
     - name: Install iOS SDK
@@ -82,6 +82,8 @@ jobs:
       run: |
 
         export THEOS=$HOME/theos
+
+        export THEOS_PACKAGE_SCHEME=rootless
 
         make clean
 
