@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
 
     steps:
     - name: Checkout repository
@@ -15,12 +15,13 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Setup Theos
-      uses: theos/setup-theos@v1
+    - name: Install Theos
+      run: |
+        git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
     - name: Build tweak
       run: |
-        export THEOS=/opt/theos
+        export THEOS=$HOME/theos
         make clean package FINALPACKAGE=1
 
     - name: Upload deb artifact
