@@ -1,107 +1,53 @@
-name: Build SBCPUFloating
+name: Build SB CPU Floating
 
 on:
-  push:
-    branches:
-      - main
-
   workflow_dispatch:
 
-
 jobs:
-
   build:
-
-    runs-on: ubuntu-22.04
-
+    runs-on: ubuntu-latest
 
     steps:
-
-
-    - name: Checkout source
+    - name: Checkout
       uses: actions/checkout@v4
 
-
-
-    - name: Install dependencies
-
+    - name: Update system
       run: |
-
-        sudo apt-get update
-
-        sudo apt-get install -y \
+        sudo apt update
+        sudo apt install -y \
           git \
-          clang \
+          curl \
+          wget \
           make \
+          perl \
+          python3 \
           xz-utils \
           fakeroot \
           dpkg-dev \
-          perl \
-          curl \
-          python3 \
-          libplist-dev \
-          libxml2-dev \
-          build-essential
-
-
-
-    - name: Install ldid
-
-      run: |
-
-        mkdir -p $HOME/bin
-
-        curl -L https://github.com/ProcursusTeam/ldid/releases/latest/download/ldid \
-        -o $HOME/bin/ldid
-
-        chmod +x $HOME/bin/ldid
-
-        echo "$HOME/bin" >> $GITHUB_PATH
-
-        ldid --version || true
-
-
+          clang \
+          ldid
 
     - name: Install Theos
-
       run: |
-
         git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
-        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
-
-
-
-    - name: Install iOS SDK
-
+    - name: Install iPhone SDK
       run: |
+        bash $HOME/theos/install.sh
 
-        mkdir -p $HOME/theos/sdks
-
-        git clone --depth=1 https://github.com/xybp888/iOS-SDKs.git sdkrepo
-
-        cp -r sdkrepo/*.sdk $HOME/theos/sdks/
-
-
+    - name: Setup environment
+      run: |
+        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+        echo "$HOME/theos/bin" >> $GITHUB_PATH
 
     - name: Build tweak
-
       run: |
-
         export THEOS=$HOME/theos
-
-        make clean || true
-
+        make clean
         make package FINALPACKAGE=1
 
-
-
     - name: Upload deb
-
       uses: actions/upload-artifact@v4
-
       with:
-
-        name: SBCPUFloating-deb
-
+        name: SB-CPU-Floating-deb
         path: packages/*.deb
