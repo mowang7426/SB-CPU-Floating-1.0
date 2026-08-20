@@ -27,17 +27,20 @@ jobs:
           make \
           clang \
           curl \
+          wget \
           xz-utils \
-          python3 \
-          perl
+          python3
 
 
-    - name: Install ldid
+    - name: Install ldid binary
       run: |
-        git clone https://github.com/ProcursusTeam/ldid.git
-        cd ldid
-        make
-        sudo cp ldid /usr/local/bin/ldid
+        wget https://github.com/ProcursusTeam/ldid/releases/download/v2.1.5/ldid_linux_amd64
+
+        chmod +x ldid_linux_amd64
+
+        sudo mv ldid_linux_amd64 /usr/local/bin/ldid
+
+        ldid -h
 
 
     - name: Install Theos
@@ -45,9 +48,10 @@ jobs:
         git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
 
-    - name: Setup environment
+    - name: Setup Theos
       run: |
         echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+
         echo "$HOME/theos/bin" >> $GITHUB_PATH
 
 
@@ -55,11 +59,9 @@ jobs:
       run: |
         mkdir -p $HOME/theos/sdks
 
-        curl -L \
-        https://github.com/theos/sdks/releases/download/master/iPhoneOS17.0.sdk.tar.xz \
-        -o sdk.tar.xz
+        wget https://github.com/theos/sdks/releases/download/master/iPhoneOS17.0.sdk.tar.xz
 
-        tar xf sdk.tar.xz -C $HOME/theos/sdks
+        tar xf iPhoneOS17.0.sdk.tar.xz -C $HOME/theos/sdks
 
 
     - name: Build tweak
