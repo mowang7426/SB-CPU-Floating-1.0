@@ -23,17 +23,26 @@ jobs:
           git clone --recursive https://github.com/theos/theos.git $THEOS
           echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Install iOS SDK
+      - name: Install iPhoneOS SDK
         run: |
-          git clone --depth=1 https://github.com/theos/sdks.git $HOME/theos/sdks
+          export THEOS=$HOME/theos
+
+          mkdir -p $THEOS/sdks
+
+          if [ -z "$(ls -A $THEOS/sdks)" ]; then
+            git clone --depth=1 https://github.com/theos/sdks.git $THEOS/sdks
+          else
+            echo "SDK already exists"
+          fi
 
       - name: Build package
         run: |
           export THEOS=$HOME/theos
+          make clean
           make package FINALPACKAGE=1
 
       - name: Upload deb
         uses: actions/upload-artifact@v4
         with:
-          name: deb
+          name: SB-CPU-Floating-deb
           path: packages/*.deb
