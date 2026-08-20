@@ -20,7 +20,6 @@ jobs:
 
 
     - name: Checkout source
-
       uses: actions/checkout@v4
 
 
@@ -41,7 +40,25 @@ jobs:
           perl \
           curl \
           python3 \
-          ldid
+          build-essential
+
+
+
+    - name: Install ldid
+
+      run: |
+
+        git clone https://github.com/ProcursusTeam/ldid.git ldid-source
+
+        cd ldid-source
+
+        make
+
+        sudo cp ldid /usr/local/bin/ldid
+
+        sudo chmod +x /usr/local/bin/ldid
+
+        ldid --version || true
 
 
 
@@ -55,7 +72,7 @@ jobs:
 
 
 
-    - name: Install SDK
+    - name: Install iOS SDK
 
       run: |
 
@@ -65,7 +82,7 @@ jobs:
         git clone --depth=1 https://github.com/xybp888/iOS-SDKs.git sdkrepo
 
 
-        cp -r sdkrepo/*.sdk $HOME/theos/sdks/ || true
+        cp -r sdkrepo/*.sdk $HOME/theos/sdks/
 
 
 
@@ -87,9 +104,8 @@ jobs:
 
       uses: actions/upload-artifact@v4
 
-
       with:
 
-        name: SBCPUFloating-package
+        name: SBCPUFloating-deb
 
         path: packages/*.deb
