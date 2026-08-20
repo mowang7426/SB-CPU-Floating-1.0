@@ -6,75 +6,118 @@ on:
     branches:
       - main
 
+
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
+
 
     steps:
 
-    - name: Checkout
+
+    - name: Checkout source
       uses: actions/checkout@v4
       with:
         submodules: recursive
 
 
+
     - name: Install dependencies
-      run: |
+      run:
+
         sudo apt update
+
         sudo apt install -y \
           git \
           clang \
           make \
           xz-utils \
-          ldid \
           fakeroot \
-          dpkg-dev
+          dpkg-dev \
+          perl \
+          curl \
+          python3
+
+
+
+    - name: Install ldid
+      run: |
+
+        sudo curl -L \
+        https://github.com/ProcursusTeam/ldid/releases/latest/download/ldid_linux \
+        -o /usr/local/bin/ldid
+
+        sudo chmod +x /usr/local/bin/ldid
+
+        ldid -h
+
 
 
     - name: Install Theos
       run: |
+
         export THEOS=$HOME/theos
 
         rm -rf $THEOS
 
-        git clone --recursive https://github.com/theos/theos.git $THEOS
+        git clone --recursive \
+        https://github.com/theos/theos.git \
+        $THEOS
+
 
         echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
+
         chmod +x $THEOS/bin/bootstrap.sh
+
 
         $THEOS/bin/bootstrap.sh
 
 
-    - name: Install iPhoneOS SDK
+
+    - name: Install SDK
       run: |
 
-        mkdir -p $HOME/theos/sdks
-
-        cd $HOME/theos/sdks
-
-        if [ ! -d "iPhoneOS16.5.sdk" ]; then
-
-          git clone --depth=1 \
-          https://github.com/theos/sdks.git sdkrepo
-
-          cp -r sdkrepo/*.sdk .
-
-          rm -rf sdkrepo
-
-        fi
+        export THEOS=$HOME/theos
 
 
-    - name: Check project files
-      run: |
+        mkdir -p $THEOS/sdks
 
-        echo "===== Files ====="
+
+        cd $THEOS/sdks
+
+
+        rm -rf *
+
+
+        git clone --depth=1 \
+        https://github.com/theos/sdks.git sdkrepo
+
+
+        cp -r sdkrepo/*.sdk .
+
+
+        rm -rf sdkrepo
+
 
         ls -la
 
-        echo "===== Theos ====="
 
-        ls $THEOS
+
+    - name: Check project
+      run: |
+
+        echo "===== PROJECT ====="
+
+        ls -la
+
+
+        echo "===== FILES ====="
+
+        find . -maxdepth 2 -type f
+
 
 
     - name: Build package
@@ -82,16 +125,21 @@ jobs:
 
         export THEOS=$HOME/theos
 
+
         make clean
+
 
         make package FINALPACKAGE=1
 
 
+
     - name: Upload deb
       uses: actions/upload-artifact@v4
+
       with:
 
         name: SB-CPU-Floating-deb
 
-        path: |
+        path:
+
           packages/*.deb
