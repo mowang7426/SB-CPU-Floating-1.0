@@ -4,22 +4,34 @@ on:
   push:
     branches:
       - main
+
   workflow_dispatch:
 
+
 jobs:
+
   build:
+
     runs-on: ubuntu-latest
+
 
     steps:
 
-    - name: Checkout
+    - name: Checkout source
       uses: actions/checkout@v4
 
 
-    - name: Install packages
+    - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y git curl xz-utils make perl clang
+        sudo apt install -y \
+          git \
+          curl \
+          make \
+          clang \
+          perl \
+          xz-utils \
+          python3
 
 
     - name: Install Theos
@@ -27,31 +39,46 @@ jobs:
         git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
 
-    - name: Install iPhone toolchain
+    - name: Setup Theos environment
       run: |
-        mkdir -p $HOME/theos/toolchain/linux/iphone
+        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-        curl -L https://github.com/theos/sdks/releases/download/master/iphone-clang-linux.tar.xz \
-        -o clang.tar.xz
+        mkdir -p $HOME/theos/toolchain/linux/iphone/bin
 
-        tar xf clang.tar.xz \
-        -C $HOME/theos/toolchain/linux/iphone
+        ln -sf $(which clang) \
+        $HOME/theos/toolchain/linux/iphone/bin/clang
+
+        ln -sf $(which clang++) \
+        $HOME/theos/toolchain/linux/iphone/bin/clang++
 
 
-    - name: Install SDK
+    - name: Install iOS SDK
       run: |
-        git clone https://github.com/theos/sdks.git $HOME/theos/sdks
+        git clone https://github.com/theos/sdks.git /tmp/sdks
+
+        mkdir -p $HOME/theos/sdks
+
+        cp -r /tmp/sdks/*.sdk \
+        $HOME/theos/sdks/ || true
 
 
-    - name: Build
+    - name: Check environment
       run: |
-        export THEOS=$HOME/theos
+        echo $THEOS
+        ls $THEOS
+        ls $THEOS/sdks || true
+
+
+    - name: Build tweak
+      run: |
         make clean || true
         make package FINALPACKAGE=1
 
 
     - name: Upload deb
       uses: actions/upload-artifact@v4
+
       with:
-        name: SB-CPU-Floating
+        name: SB-CPU-Floating-deb
+
         path: packages/*.deb
