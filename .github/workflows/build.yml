@@ -1,61 +1,97 @@
 name: Build RootHide deb
 
 on:
-  push:
   workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y git curl xz-utils fakeroot dpkg-dev
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-      - name: Install Theos
-        run: |
-          export THEOS=$HOME/theos
 
-          git clone --recursive https://github.com/theos/theos.git $THEOS
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y \
+          git \
+          clang \
+          make \
+          xz-utils \
+          ldid \
+          fakeroot \
+          dpkg-dev
 
-          echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-          mkdir -p $THEOS/toolchain/linux
+    - name: Install Theos
+      run: |
+        export THEOS=$HOME/theos
 
-          git clone --depth=1 https://github.com/theos/llvm-project.git $THEOS/toolchain/linux/iphone
+        rm -rf $THEOS
 
-          chmod +x $THEOS/toolchain/linux/iphone/bin/* || true
+        git clone --recursive https://github.com/theos/theos.git $THEOS
 
-          echo "===== Toolchain ====="
-          ls -la $THEOS/toolchain/linux/iphone/bin
+        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
 
-      - name: Install iPhoneOS SDK
-        run: |
-          export THEOS=$HOME/theos
+        chmod +x $THEOS/bin/bootstrap.sh
 
-          rm -rf $THEOS/sdks
-          mkdir -p $THEOS/sdks
+        $THEOS/bin/bootstrap.sh
 
-          git clone --depth=1 https://github.com/theos/sdks.git /tmp/theos-sdks
 
-          find /tmp/theos-sdks -name "*.sdk" -type d -exec cp -R {} $THEOS/sdks/ \;
+    - name: Install iPhoneOS SDK
+      run: |
 
-          echo "===== Installed SDKs ====="
-          ls -la $THEOS/sdks
+        mkdir -p $HOME/theos/sdks
 
-      - name: Build package
-        run: |
-          export THEOS=$HOME/theos
-          make clean
-          make package FINALPACKAGE=1
+        cd $HOME/theos/sdks
 
-      - name: Upload deb
-        uses: actions/upload-artifact@v4
-        with:
-          name: SB-CPU-Floating-deb
-          path: packages/*.deb
+        if [ ! -d "iPhoneOS16.5.sdk" ]; then
+
+          git clone --depth=1 \
+          https://github.com/theos/sdks.git sdkrepo
+
+          cp -r sdkrepo/*.sdk .
+
+          rm -rf sdkrepo
+
+        fi
+
+
+    - name: Check project files
+      run: |
+
+        echo "===== Files ====="
+
+        ls -la
+
+        echo "===== Theos ====="
+
+        ls $THEOS
+
+
+    - name: Build package
+      run: |
+
+        export THEOS=$HOME/theos
+
+        make clean
+
+        make package FINALPACKAGE=1
+
+
+    - name: Upload deb
+      uses: actions/upload-artifact@v4
+      with:
+
+        name: SB-CPU-Floating-deb
+
+        path: |
+          packages/*.deb
