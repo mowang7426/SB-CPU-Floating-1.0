@@ -8,37 +8,48 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Update system
+
+    - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install -y \
           git \
           curl \
-          wget \
           make \
-          perl \
-          python3 \
-          xz-utils \
-          fakeroot \
-          dpkg-dev \
           clang \
-          ldid
+          ldid \
+          xz-utils \
+          python3 \
+          fakeroot \
+          dpkg-dev
+
 
     - name: Install Theos
       run: |
         git clone --recursive https://github.com/theos/theos.git $HOME/theos
 
-    - name: Install iPhone SDK
-      run: |
-        bash $HOME/theos/install.sh
 
-    - name: Setup environment
+    - name: Install toolchain
+      run: |
+        mkdir -p $HOME/theos/toolchain/linux/iphone/bin
+
+        wget -q https://github.com/theos/sdks/releases/download/master/iphoneos15.6.sdk.tar.xz \
+        -O sdk.tar.xz
+
+        mkdir -p $HOME/theos/sdks
+
+        tar -xf sdk.tar.xz -C $HOME/theos/sdks
+
+
+    - name: Setup
       run: |
         echo "THEOS=$HOME/theos" >> $GITHUB_ENV
         echo "$HOME/theos/bin" >> $GITHUB_PATH
+
 
     - name: Build tweak
       run: |
@@ -46,8 +57,9 @@ jobs:
         make clean
         make package FINALPACKAGE=1
 
+
     - name: Upload deb
       uses: actions/upload-artifact@v4
       with:
-        name: SB-CPU-Floating-deb
+        name: SB-CPU-Floating
         path: packages/*.deb
